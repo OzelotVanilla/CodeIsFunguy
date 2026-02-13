@@ -2,6 +2,7 @@ import { InstrumentVoice, SoundManager } from "@/utils/SoundManager";
 import { AmbientPlayer } from "../AmbientPlayer";
 import { midi_note_to_name } from "@/utils/constants";
 import { type MusicContext } from "@/utils/music";
+import { type MusicTimeBroadcastEvent } from "../facility_event.extend.interface";
 
 
 /**
@@ -60,7 +61,7 @@ export class SingingTextAmbientPlayer extends AmbientPlayer
         }
     }
 
-    update(measure: number, beat: number): void
+    update({ measure, beat }: MusicTimeBroadcastEvent): void
     {
         const offset_array_len = SingingTextAmbientPlayer.keys_offset.length
         const one_beat_duration__in_s = 60 / this.music_context__ref.bpm
@@ -81,7 +82,7 @@ export class SingingTextAmbientPlayer extends AmbientPlayer
                 + this.music_context__ref.base_note
             // console.log(`${measure}:${beat}:flute: ${midi_note_to_name[note_num]}`)
             this.flute_voice?.triggerAttackRelease(
-                SingingTextAmbientPlayer.keys_offset[measure % offset_array_len][1] + this.music_context__ref.base_note,
+                note_num,
                 3 * one_beat_duration__in_s
             )
         }

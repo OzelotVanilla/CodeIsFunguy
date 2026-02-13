@@ -19,8 +19,7 @@ export function SingingTextFacility({ music_context__ref }: SingingTextFacility_
     /** As non-focused object, play ambient BGM. */
     const onReceivingMusicTimeBroadcast = (event: CustomEvent<MusicTimeBroadcastEvent>) =>
     {
-        const { measure, beat } = event.detail
-        ambient_player__ref.current?.update(measure, beat)
+        ambient_player__ref.current?.update(event.detail)
     }
 
     useEffect(() =>

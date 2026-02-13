@@ -2,12 +2,12 @@
 
 import "./page.scss"
 
-import { Dispatch, RefObject, SetStateAction, useContext, useEffect, useRef, useState } from "react"
+import { Dispatch, RefObject, SetStateAction, useEffect, useRef, useState } from "react"
 import { SoundManager } from "@/utils/SoundManager"
 import { MusicContext } from "@/utils/music"
 import { AvailableFacility } from "./facilities/Facility"
 import { SingingTextFacility } from "./facilities/singing_text/SingingTextFacility"
-import { FacilityMountEventDetail, FacilityUnmountEventDetail, MusicTimeBroadcastEvent } from "./facilities/facility_event.extend.interface"
+import { FacilityMountEventDetail, FacilityUnmountEventDetail, type MusicTimeBroadcastEvent } from "./facilities/facility_event.extend.interface"
 import { StageOverlay, stage_overlay__fade_duration } from "./stage_overlay/StageOverlay"
 import { AmbientPlayer } from "./facilities/AmbientPlayer"
 import { getHTMLElementCenterPositionRatioOnXAxis } from "@/utils/layout"
@@ -25,9 +25,11 @@ const playground_gate__entering_anime__duration = 1.5 * 1000
 const zoom_to_facility__anime__duration = 1.5 * 1000
 
 /**
- * Number of music-time broadcast ticks that occur within a single measure.
+ * Number of pulse per quater note (1/4) note.
+ * 
+ * Example, `ppq = 2` means 2 pulse per 1/4 note, the event is emitted every 1/8 note.
  */
-const tickMusicTimeBroadcast__frequency = 8
+const tickMusicTimeBroadcast__ppq = 2
 
 
 /**
@@ -165,30 +167,48 @@ function Playground({ entering_status }: Playground_Param)
     const tickMusicTimeBroadcast = () =>
     {
         const beat_duration__in_ms = 60 / music_context__ref.current.bpm * 1000
-        const measure_duration__in_ms = beat_duration__in_ms * music_context__ref.current.n_beat_in_one_measure
-        const tick_interval__in_ms = measure_duration__in_ms / tickMusicTimeBroadcast__frequency
+        const tick_duration__in_ms = beat_duration__in_ms / tickMusicTimeBroadcast__ppq
         const now = performance.now()
         const time_elapsed__in_ms = now - start_time__timestamp.current
-        const beat_elapsed_count = Math.round(time_elapsed__in_ms / beat_duration__in_ms)
+        // Use integer tick instead of rounded beats
+        const tick_elapsed_count = Math.floor(time_elapsed__in_ms / tick_duration__in_ms)
         const n_beat_in_one_measure = music_context__ref.current.n_beat_in_one_measure
 
         tickMusicTimeBroadcast__timestamp.current = now
 
-        if (beat_elapsed_count > last_broadcasted_beat__ref.current)
+        // rename your ref if you want; minimal: reuse existing ref name but meaning changes
+        if (tick_elapsed_count > last_broadcasted_beat__ref.current)
         {
-            // Skip missed beats; only emit the current beat to avoid burst playback after pauses.
-            last_broadcasted_beat__ref.current = beat_elapsed_count
-            const measure_count = Math.floor(last_broadcasted_beat__ref.current / n_beat_in_one_measure)
-            const beat_in_measure = last_broadcasted_beat__ref.current % n_beat_in_one_measure
+            // Skip missed ticks; only emit current tick.
+            last_broadcasted_beat__ref.current = tick_elapsed_count
+
+            const ticks_per_measure = n_beat_in_one_measure * tickMusicTimeBroadcast__ppq
+
+            const measure_count = Math.floor(tick_elapsed_count / ticks_per_measure)
+            const tick_in_measure = tick_elapsed_count % ticks_per_measure
+
+            // Compute beat as float for convenience (0, 0.5, 1.0, ...)
+            const beat_in_measure = tick_in_measure / tickMusicTimeBroadcast__ppq
 
             document.dispatchEvent(new CustomEvent<MusicTimeBroadcastEvent>("music_time_broadcast", {
-                detail: { measure: measure_count, beat: beat_in_measure }
+                detail: ({
+                    measure: measure_count,
+                    beat: beat_in_measure,
+                    tick_abs: tick_elapsed_count,
+                    tick_in_measure: tick_in_measure,
+                    ppq: tickMusicTimeBroadcast__ppq,
+                    ticks_per_beat: n_beat_in_one_measure * tickMusicTimeBroadcast__ppq,
+                    beats_per_measure: n_beat_in_one_measure,
+                    start_time__in_ms: start_time__timestamp.current,
+                    now_time__in_ms: now,
+                } satisfies MusicTimeBroadcastEvent)
             }))
         }
 
-        const ticks_elapsed__count = Math.floor(time_elapsed__in_ms / tick_interval__in_ms)
+        // Schedule next tick
+        const ticks_elapsed__count = Math.floor(time_elapsed__in_ms / tick_duration__in_ms)
         const next_target_time__in_ms = start_time__timestamp.current
-            + (ticks_elapsed__count + 1) * tick_interval__in_ms
+            + (ticks_elapsed__count + 1) * tick_duration__in_ms
         const delay_until_next = Math.max(0, next_target_time__in_ms - performance.now())
         return (tickMusicTimeBroadcast__cancelID.current = window.setTimeout(tickMusicTimeBroadcast, delay_until_next))
     }

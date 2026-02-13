@@ -1,5 +1,6 @@
 import { MusicContext } from "@/utils/music"
 import { SoundManager } from "@/utils/SoundManager"
+import { type MusicTimeBroadcastEvent } from "./facility_event.extend.interface"
 
 
 /**
@@ -68,7 +69,7 @@ export abstract class AmbientPlayer
     /**
      * Receive latest timing information.
      */
-    abstract update(measure: number, beat: number): void
+    abstract update(broadcast_time_event: MusicTimeBroadcastEvent): void
 
     /**
      * Ramp master gain value of the player.

@@ -2,8 +2,37 @@ import { type AmbientPlayer } from "./AmbientPlayer";
 import { AvailableFacility } from "./Facility";
 
 export type MusicTimeBroadcastEvent = {
-    beat: number
+    // derived convenience values (precomputed)
     measure: number
+    beat: number
+
+    // tick related.
+    /**
+     * Absolute tick since start (integer)
+     */
+    tick_abs: number
+    /** 
+     * Tick position inside current measure (integer).
+     */
+    tick_in_measure: number
+    /**
+     * pulses per quarter note (integer).
+     */
+    ppq: number
+
+    // Stored for convinience.
+    /** 
+     * Number of ticks per beat (resolution).
+     */
+    ticks_per_beat: number
+    /** 
+     * Number of beats per measure (time signature numerator)
+     */
+    beats_per_measure: number
+
+    // timing information in milliseconds
+    start_time__in_ms: number
+    now_time__in_ms: number
 }
 
 export type FacilityMountEventDetail = {
